@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>⚙️ 8086 Simulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Consolas', monospace;
+      background: radial-gradient(circle at top, #0f172a, #020617);
+      color: #e2e8f0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    header {
+      text-align: center;
+      padding: 25px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+    h1 {
+      margin: 0;
+      font-size: 2em;
+      color: #38bdf8;
+      letter-spacing: 1px;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 25px;
+      padding: 25px;
+    }
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      width: 330px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transition: transform 0.3s;
+    }
+    .panel:hover { transform: translateY(-3px); }
+    textarea {
+      width: 100%;
+      height: 150px;
+      background: #0f172a;
+      color: #38bdf8;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px;
+      resize: vertical;
+    }
+    button {
+      background: linear-gradient(90deg, #0ea5e9, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 16px;
+      margin: 8px 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    button:hover { background: linear-gradient(90deg, #38bdf8, #3b82f6); }
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 10px;
+      min-height: 100px;
+      overflow-x: auto;
+    }
+    footer {
+      text-align: center;
+      padding: 10px;
+      font-size: 0.9em;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+    }
+    #registers p, #memory p { margin: 3px 0; }
+    #memory {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px;
+      height: 150px;
+      overflow-y: auto;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚙️ 8086 Simulator</h1>
+    <p>made by <b>Subharthi Bose (RA2411003010105)</b> and <b>Aniruddha Dutta (RA2411003010087)</b></p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Editor</h2>
+      <textarea id="code" placeholder="Enter 8086 assembly here, e.g.&#10;MOV AX, 5&#10;ADD AX, 3"></textarea>
+      <div>
+        <button id="run">Run</button>
+        <button id="reset">Reset</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Registers</h2>
+      <div id="registers">
+        <p>AX: <span id="ax">0000</span></p>
+        <p>BX: <span id="bx">0000</span></p>
+        <p>CX: <span id="cx">0000</span></p>
+        <p>DX: <span id="dx">0000</span></p>
+        <p>FLAGS: <span id="flags">0000</span></p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Memory</h2>
+      <div id="memory"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Output</h2>
+      <pre id="output">Type your code and click Run.</pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>8086 Web Simulator • Educational Purpose Only</p>
+  </footer>
+
+  <script>
+    let registers = { AX: 0, BX: 0, CX: 0, DX: 0, FLAGS: 0 };
+    let memory = new Array(256).fill(0); // 256 memory cells
+
+    function updateRegisters() {
+      for (let r in registers) {
+        document.getElementById(r.toLowerCase()).textContent =
+          registers[r].toString(16).padStart(4, '0').toUpperCase();
+      }
+    }
+
+    function updateMemory() {
+      const memDiv = document.getElementById('memory');
+      memDiv.innerHTML = "";
+      memory.forEach((val, i) => {
+        if (val !== 0)
+          memDiv.innerHTML += `MEM[${i.toString().padStart(3, '0')}] = ${val}<br>`;
+      });
+    }
+
+    function setFlagZero(val) {
+      registers.FLAGS = (val === 0) ? 0x0040 : 0x0000;
+    }
+
+    document.getElementById('run').addEventListener('click', () => {
+      const code = document.getElementById('code').value;
+      const output = document.getElementById('output');
+      output.textContent = "Running program...\n";
+
+      const lines = code.split('\n');
+      lines.forEach(line => {
+        line = line.trim().toUpperCase();
+        if (!line) return;
+
+        // MOV instruction
+        if (line.startsWith("MOV")) {
+          const parts = line.split(/[ ,]+/);
+          const dest = parts[1];
+          const src = parts[2];
+
+          if (dest.startsWith("MEM[")) {
+            const addr = parseInt(dest.match(/\[(\d+)\]/)[1]);
+            const value = registers[src] ?? parseInt(src);
+            if (!isNaN(addr) && !isNaN(value)) {
+              memory[addr] = value;
+              output.textContent += `Stored ${value} into ${dest}\n`;
+            }
+          } else if (src.startsWith("MEM[")) {
+            const addr = parseInt(src.match(/\[(\d+)\]/)[1]);
+            if (!isNaN(addr)) {
+              registers[dest] = memory[addr];
+              output.textContent += `Loaded ${dest} from ${src}\n`;
+            }
+          } else if (registers[dest] !== undefined) {
+            const val = registers[src] ?? parseInt(src);
+            registers[dest] = val;
+            output.textContent += `${dest} set to ${val}\n`;
+          }
+
+        } else if (line.startsWith("ADD")) {
+          const parts = line.split(/[ ,]+/);
+          const reg = parts[1];
+          const src = parts[2];
+          let val = registers[src] ?? parseInt(src);
+          if (src.startsWith("MEM[")) {
+            const addr = parseInt(src.match(/\[(\d+)\]/)[1]);
+            val = memory[addr];
+          }
+          if (registers[reg] !== undefined && !isNaN(val)) {
+            registers[reg] += val;
+            setFlagZero(registers[reg]);
+            output.textContent += `${reg} incremented by ${val}\n`;
+          }
+
+        } else if (line.startsWith("SUB")) {
+          const parts = line.split(/[ ,]+/);
+          const reg = parts[1];
+          const src = parts[2];
+          let val = registers[src] ?? parseInt(src);
+          if (src.startsWith("MEM[")) {
+            const addr = parseInt(src.match(/\[(\d+)\]/)[1]);
+            val = memory[addr];
+          }
+          if (registers[reg] !== undefined && !isNaN(val)) {
+            registers[reg] -= val;
+            setFlagZero(registers[reg]);
+            output.textContent += `${reg} decremented by ${val}\n`;
+          }
+
+        } else {
+          output.textContent += `Unknown instruction: ${line}\n`;
+        }
+      });
+
+      updateRegisters();
+      updateMemory();
+      output.textContent += "Execution complete.";
+    });
+
+    document.getElementById('reset').addEventListener('click', () => {
+      registers = { AX: 0, BX: 0, CX: 0, DX: 0, FLAGS: 0 };
+      memory = new Array(256).fill(0);
+      updateRegisters();
+      updateMemory();
+      document.getElementById('output').textContent = "Reset complete.";
+    });
+
+    updateRegisters();
+    updateMemory();
+  </script>
+</body>
+</html>
