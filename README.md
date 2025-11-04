@@ -1,6 +1,7 @@
 # ⚙️ 8086 Web Simulator
 
-![8086 Web Simulator Screenshot](https://via.placeholder.com/800x400?text=8086+Web+Simulator+Screenshot)
+![8086 Web Simulator Screenshot](https://github.com/user-attachments/assets/bf6e7670-787b-4db0-81ac-b8e497623fa3)
+
 
 
 A simple, educational web-based simulator for the Intel 8086 microprocessor, designed to visualize how assembly code interacts with CPU registers and memory. This project is built using HTML, CSS, and JavaScript, providing a real-time, interactive learning experience directly in the browser.
